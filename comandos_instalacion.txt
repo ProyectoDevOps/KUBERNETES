@@ -1,0 +1,59 @@
+# Update
+sudo yum update
+
+# Install docker
+sudo yum install -y docker && \
+sudo systemctl enable docker && \
+sudo systemctl start docker
+
+
+# Install Kubernetes
+https://kubernetes.io/docs/setup/independent/create-cluster-kubeadm/
+
+1. Install Kubeadm
+$ sudo -i 
+# Add <your_hostname> to /etc/hosts
+$ echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
+$ echo '1' > /proc/sys/net/ipv4/ip_forward
+
+
+cat <<EOF > /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+exclude=kube*
+EOF
+
+# Set SELinux in permissive mode (effectively disabling it)
+$ setenforce 0
+$ sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
+
+$ yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
+
+$ systemctl enable --now kubelet
+
+$ kubeadm init
+
+$ systemctl start kubelet
+
+# Exit from "sudo"
+$ exit 
+
+# Configure for KUBECTL 
+$ mkdir -p $HOME/.kube
+$ sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+$ sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+2. Configure network
+$ kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"
+
+3. Allow Pods to be placed in Master
+$ kubectl taint nodes --all node-role.kubernetes.io/master-
+
+4. Configure COREDNS to run with Docker 1.13
+$ kubectl edit deployment coredns -n kube-system
+# Remove "allowPrivilegeEscalation" line
